@@ -12,14 +12,7 @@
     rows: 6,
     cols: 9,
     aisleCols: [4],
-    seats: [
-      'Dương Hiếu Phong', '', 'Nguyễn Như Ngọc', 'Đỗ Hà Phương', '', 'Hồ Hiếu Phong', '', 'Hoàng Đặng Phương Nguyễn', 'Ngô Tiến Thịnh',
-      'Hoàng Đàm Khánh Linh', 'Tạ Khánh Linh', 'Nguyễn Thanh Tâm', 'Hoàng Phương Linh', '', 'Nguyễn Hữu Khánh Huy', 'Nguyễn Diệp Phương', '', 'Đặng Đình Thái',
-      'Nguyễn Quang Tùng', 'Trần Thị Như Ngọc', '', 'Nguyễn Minh Quân', '', 'Bùi Tú Phương', 'Nguyễn Thị Khánh Linh', 'Lê Ngọc Diệp', 'Bùi Mậu Toàn',
-      'Nguyễn Văn Hải', 'Nguyễn Quang Phước', 'Hoàng Phạm Diệu Hương', 'Nguyễn Thị Trà My', '', 'Trần Thị Huyền Ngọc', '', 'Đàm Tiến Thanh', 'Nguyễn Thanh Phong',
-      'Nguyễn Lê Minh Đức', 'Bùi Minh Quân', '', 'Nguyễn Phương Thảo', '', 'Đặng Trần Lộc', 'Trần Đức Minh', 'Vũ Anh Thư', 'Nguyễn Thị Khánh Ly',
-      '', 'Nguyễn Vũ Bình Minh', 'Nguyễn Hoàng Tùng', 'Trần Văn Tùng', '', 'Hoàng Anh Thư', 'Nguyễn Yến Vy', 'Chu Công Lộc', ''
-    ]
+    seats: []
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -294,7 +287,7 @@
     document.title = `Sơ đồ lớp · ${data.title}`;
 
     const date = new Date();
-    els.diagramDate.textContent = `Cập nhật ${date.toLocaleDateString('vi-VN')}`;
+    els.diagramDate.textContent = ``;
     const year = date.getMonth() >= 7 ? date.getFullYear() : date.getFullYear() - 1;
     els.schoolYear.textContent = `${year} — ${year + 1}`;
   }
