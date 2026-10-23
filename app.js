@@ -1,6 +1,6 @@
 /*
  * Sơ đồ lớp — ứng dụng tĩnh, không cần backend.
- * Dữ liệu khởi tạo được lấy từ ./lastest.json khi chạy trên GitHub Pages.
+ * Dữ liệu khởi tạo được lấy từ ./latest.json khi chạy trên GitHub Pages.
  */
 (() => {
   'use strict';
@@ -19,10 +19,10 @@
   const els = {
     className: $('#className'), rowsInput: $('#rowsInput'), colsInput: $('#colsInput'), aisleInput: $('#aisleInput'),
     studentCount: $('#studentCount'), emptyCount: $('#emptyCount'), occupancyCount: $('#occupancyCount'), layoutDescription: $('#layoutDescription'),
-    workspaceTitle: $('#workspaceTitle'), diagramTitle: $('#diagramTitle'), diagramStudents: $('#diagramStudents'), diagramDate: $('#diagramDate'), schoolYear: $('#schoolYear'),
+    workspaceTitle: $('#workspaceTitle'), diagramTitle: $('#diagramTitle'), diagramStudents: $('#diagramStudents'), diagramMetaSep: $('#diagramMetaSep'), diagramDate: $('#diagramDate'), schoolYear: $('#schoolYear'),
     grid: $('#seatGrid'), gridViewport: $('#gridViewport'), diagramPrint: $('#diagramPrint'),
     rosterList: $('#rosterList'), rosterCount: $('#rosterCount'), rosterEmpty: $('#rosterEmpty'), searchInput: $('#searchInput'), clearSearchBtn: $('#clearSearchBtn'),
-    zoomRange: $('#zoomRange'), selectionBar: $('#selectionBar'), selectionText: $('#selectionText'),
+    zoomRange: $('#zoomRange'), fullscreenBtn: $('#fullscreenBtn'), fullscreenIcon: $('#fullscreenIcon'), selectionBar: $('#selectionBar'), selectionText: $('#selectionText'),
     themeToggle: $('#themeToggle'), themeToggleIcon: $('#themeToggleIcon'), themeMenu: $('#themeMenu'),
     undoBtn: $('#undoBtn'), redoBtn: $('#redoBtn'), jsonFile: $('#jsonFile'), toast: $('#toast'),
     editModal: $('#editModal'), editForm: $('#editForm'), editName: $('#editName'), editPosition: $('#editPosition'), deleteSeatBtn: $('#deleteSeatBtn'),
@@ -37,6 +37,7 @@
   let data = normaliseData(DEFAULT_DATA);
   let ui = { zoom: 92, theme: 'light', selected: null, search: '' };
   let sourceFingerprint = null;
+  let activeSeedFile = 'latest.json';
   let undoStack = [];
   let redoStack = [];
   let draggedIndex = null;
@@ -45,12 +46,25 @@
   let toastTimer = null;
   let confirmResolver = null;
   let pendingExport = null;
+  let isExporting = false;
+  let lastFocusBeforeModal = null;
   let suppressSeatClick = false;
 
   function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
   function cleanName(value) { return String(value ?? '').replace(/\s+/g, ' ').trim(); }
   function safeTitle(value) { return cleanName(value).slice(0, 50) || 'Lớp mới'; }
+  function formatWorkspaceTitle(title) {
+    const t = safeTitle(title);
+    return /^lớp\b/i.test(t) ? t : `Lớp ${t}`;
+  }
+  function formatDiagramTitle(title) {
+    const t = safeTitle(title);
+    return /^lớp\b/i.test(t) ? `SƠ ĐỒ ${t.toLocaleUpperCase('vi')}` : `SƠ ĐỒ LỚP ${t.toLocaleUpperCase('vi')}`;
+  }
+  function foldVietnamese(value) {
+    return String(value ?? '').toLocaleLowerCase('vi').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+  }
 
   function normaliseData(payload) {
     const raw = payload && typeof payload === 'object' ? payload : {};
@@ -64,6 +78,7 @@
       aisleCols = cols >= 3 && cols % 2 === 1 ? [Math.floor(cols / 2)] : [];
     }
     aisleCols = [...new Set(aisleCols)].sort((a, b) => a - b);
+    if (aisleCols.length >= cols) aisleCols = aisleCols.slice(0, Math.max(0, cols - 1));
     const seats = Array.isArray(raw.seats) ? raw.seats.slice(0, total).map(cleanName) : [];
     while (seats.length < total) seats.push('');
     aisleCols.forEach((col) => {
@@ -96,7 +111,13 @@
     const column = (index % subject.cols) + 1;
     return `H${row} · C${column}`;
   }
-  function displaySeatNumber(index) { return String(index + 1).padStart(2, '0'); }
+  function seatOrdinal(index, subject = data) {
+    const position = usableIndexes(subject).indexOf(index);
+    return position >= 0 ? position + 1 : index + 1;
+  }
+  function displaySeatNumber(index, subject = data) {
+    return String(seatOrdinal(index, subject)).padStart(2, '0');
+  }
 
   function showToast(message) {
     els.toast.textContent = message;
@@ -152,10 +173,33 @@
     }
   }
 
+  function applyFrontSection(root, teacherLabel, doorLabel) {
+    const teacherText = String(teacherLabel || '').trim();
+    const doorText = String(doorLabel || '').trim();
+    setFrontLabel(root.querySelector('.teacher-desk'), teacherText);
+    setFrontLabel(root.querySelector('.door'), doorText);
+    const frontRow = root.querySelector('.front-of-room');
+    if (frontRow) frontRow.style.display = teacherText || doorText ? '' : 'none';
+
+    const ruler = root.querySelector('.grid-ruler');
+    if (ruler) {
+      const rulerTeacher = ruler.querySelector('[data-ruler-teacher]');
+      const rulerDoor = ruler.querySelector('[data-ruler-door]');
+      if (rulerTeacher) {
+        rulerTeacher.textContent = teacherText === 'BÀN GIÁO VIÊN' ? 'Bàn giáo viên' : teacherText;
+        rulerTeacher.style.visibility = teacherText ? '' : 'hidden';
+      }
+      if (rulerDoor) {
+        rulerDoor.textContent = doorText === 'CỬA RA VÀO' ? 'Cửa ra vào' : doorText;
+        rulerDoor.style.visibility = doorText ? '' : 'hidden';
+      }
+      ruler.style.display = teacherText || doorText ? '' : 'none';
+    }
+  }
+
   function applyLiveOptions() {
     setAisleLabels(els.grid, exportOptions.aisleLabel);
-    setFrontLabel(els.diagramPrint.querySelector('.teacher-desk'), exportOptions.teacherLabel);
-    setFrontLabel(els.diagramPrint.querySelector('.door'), exportOptions.doorLabel);
+    applyFrontSection(els.diagramPrint, exportOptions.teacherLabel, exportOptions.doorLabel);
     const footer = els.diagramPrint.querySelector('.diagram-footer');
     if (footer) footer.style.display = exportOptions.showFooter ? '' : 'none';
   }
@@ -209,8 +253,11 @@
   // Kích thước được tính bằng JavaScript để các ô tự đổi tỉ lệ khi xoay/đổi màn hình.
   // Ở điện thoại, giới hạn tối thiểu giữ tên học sinh còn đọc được và cho phép cuộn ngang.
   function applyZoomStyles() {
-    const compact = window.matchMedia('(max-width: 560px)').matches;
-    const seatMin = compact ? Math.max(58, Math.round(ui.zoom * 0.72)) : ui.zoom;
+    const isFullscreen = els.workspace.classList.contains('fullscreen-board');
+    const compact = !isFullscreen && window.matchMedia('(max-width: 560px)').matches;
+    const seatMin = isFullscreen
+      ? Math.max(92, ui.zoom)
+      : (compact ? Math.max(58, Math.round(ui.zoom * 0.72)) : ui.zoom);
     const seatHeight = compact
       ? Math.max(70, Math.min(105, Math.round(ui.zoom * 0.78)))
       : Math.max(84, Math.min(128, Math.round(ui.zoom * 0.96)));
@@ -222,7 +269,7 @@
     root.setProperty('--seat-height', `${seatHeight}px`);
     root.setProperty('--seat-font', `${seatFont}px`);
     els.grid.style.setProperty('--seat-min', `${seatMin}px`);
-    els.grid.style.minWidth = `${data.cols * seatMin}px`;
+    els.grid.style.minWidth = `${data.cols * seatMin + Math.max(0, data.cols - 1) + 2}px`;
   }
 
   function pushHistory() {
@@ -275,25 +322,28 @@
     const capacity = usableIndexes().length;
     const empty = capacity - count;
     const occupancy = capacity ? Math.round((count / capacity) * 100) : 0;
-    const aisleWord = data.aisleCols.length === 1 ? 'lối đi' : 'lối đi';
 
     els.studentCount.textContent = count;
     els.emptyCount.textContent = empty;
     els.occupancyCount.textContent = `${occupancy}%`;
-    els.layoutDescription.textContent = `${data.rows} hàng · ${data.cols - data.aisleCols.length} dãy bàn · ${data.aisleCols.length} ${aisleWord}`;
-    els.workspaceTitle.textContent = `Lớp ${data.title}`;
-    els.diagramTitle.textContent = `SƠ ĐỒ LỚP ${data.title}`;
+    els.layoutDescription.textContent = `${data.rows} hàng · ${data.cols - data.aisleCols.length} dãy bàn · ${data.aisleCols.length} lối đi`;
+    els.workspaceTitle.textContent = formatWorkspaceTitle(data.title);
+    els.diagramTitle.textContent = formatDiagramTitle(data.title);
     els.diagramStudents.textContent = `${count} học sinh`;
     document.title = `Sơ đồ lớp · ${data.title}`;
 
     const date = new Date();
-    els.diagramDate.textContent = ``;
+    const dateText = '';
+    els.diagramDate.textContent = dateText;
+    els.diagramDate.hidden = !dateText;
+    if (els.diagramMetaSep) els.diagramMetaSep.hidden = !dateText;
     const year = date.getMonth() >= 7 ? date.getFullYear() : date.getFullYear() - 1;
     els.schoolYear.textContent = `${year} — ${year + 1}`;
   }
 
   function renderGrid() {
     els.grid.style.setProperty('--grid-cols', data.cols);
+    els.grid.style.setProperty('--grid-rows', data.rows);
     els.grid.innerHTML = '';
     const fragment = document.createDocumentFragment();
 
@@ -314,18 +364,19 @@
       }
 
       const name = cleanName(data.seats[index]);
+      const seatNum = displaySeatNumber(index);
       const seat = document.createElement('div');
       seat.className = `seat${name ? '' : ' empty'}${ui.selected === index ? ' selected' : ''}`;
       seat.dataset.index = String(index);
       seat.draggable = true;
       seat.tabIndex = 0;
       seat.setAttribute('role', 'button');
-      seat.setAttribute('aria-label', name ? `Chỗ ${displaySeatNumber(index)}, ${name}` : `Chỗ ${displaySeatNumber(index)} đang trống`);
+      seat.setAttribute('aria-label', name ? `Chỗ ${seatNum}, ${name}` : `Chỗ ${seatNum} đang trống`);
       seat.title = name ? `${name} — ${getPosition(index)}\nNhấp đúp để sửa` : `Chỗ trống — ${getPosition(index)}\nNhấp đúp để thêm tên`;
 
       const number = document.createElement('span');
       number.className = 'seat-number';
-      number.textContent = displaySeatNumber(index);
+      number.textContent = seatNum;
       seat.appendChild(number);
 
       const content = document.createElement('span');
@@ -336,7 +387,7 @@
       const edit = document.createElement('button');
       edit.className = 'seat-edit';
       edit.type = 'button';
-      edit.setAttribute('aria-label', `Sửa chỗ ${displaySeatNumber(index)}`);
+      edit.setAttribute('aria-label', `Sửa chỗ ${seatNum}`);
       edit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
       edit.addEventListener('click', (event) => { event.stopPropagation(); openEdit(index); });
       seat.appendChild(edit);
@@ -347,6 +398,7 @@
       });
       seat.addEventListener('dblclick', () => openEdit(index));
       seat.addEventListener('keydown', (event) => {
+        if (event.target !== seat) return;
         if (event.key === 'Enter') { event.preventDefault(); openEdit(index); }
         if (event.key === ' ') { event.preventDefault(); handleSeatSelection(index); }
       });
@@ -367,11 +419,15 @@
         event.dataTransfer.dropEffect = 'move';
         if (draggedIndex !== null && draggedIndex !== index) seat.classList.add('over');
       });
-      seat.addEventListener('dragleave', () => seat.classList.remove('over'));
+      seat.addEventListener('dragleave', (event) => {
+        if (!seat.contains(event.relatedTarget)) seat.classList.remove('over');
+      });
       seat.addEventListener('drop', (event) => {
         event.preventDefault();
+        seat.classList.remove('over');
         const from = draggedIndex;
         if (from === null || from === index || isAisle(from) || isAisle(index)) return;
+        if (cleanName(data.seats[from]) === cleanName(data.seats[index])) return;
         transact('Đã đổi chỗ ngồi.', () => {
           [data.seats[from], data.seats[index]] = [data.seats[index], data.seats[from]];
         });
@@ -382,11 +438,18 @@
   }
 
   function renderRoster() {
-    const query = ui.search.trim().toLocaleLowerCase('vi');
+    const rawQuery = ui.search.trim().toLocaleLowerCase('vi');
+    const foldedQuery = foldVietnamese(rawQuery);
+    const hasDiacritics = rawQuery !== foldedQuery;
     const students = studentIndexes().map((index) => ({ index, name: data.seats[index] }));
-    const filtered = query ? students.filter((student) => student.name.toLocaleLowerCase('vi').includes(query)) : students;
+    const filtered = rawQuery
+      ? students.filter((student) => (hasDiacritics
+        ? student.name.toLocaleLowerCase('vi').includes(rawQuery)
+        : foldVietnamese(student.name).includes(foldedQuery)))
+      : students;
     els.rosterCount.textContent = students.length;
     els.rosterList.innerHTML = '';
+    els.rosterEmpty.textContent = rawQuery ? 'Không tìm thấy học sinh phù hợp.' : 'Chưa có học sinh nào trong sơ đồ.';
     els.rosterEmpty.hidden = filtered.length !== 0;
     els.clearSearchBtn.hidden = !ui.search;
 
@@ -394,13 +457,15 @@
     filtered.forEach(({ index, name }) => {
       const item = document.createElement('button');
       item.type = 'button';
-      item.className = 'roster-item';
+      item.className = `roster-item${ui.selected === index ? ' active' : ''}`;
       item.innerHTML = `<span class="roster-seat">${displaySeatNumber(index)}</span><span style="min-width:0"><span class="roster-name"></span><span class="roster-position">${getPosition(index)}</span></span>`;
       item.querySelector('.roster-name').textContent = name;
       item.addEventListener('click', () => {
-        ui.selected = index;
-        renderGrid();
-        renderSelection();
+        if (ui.selected === index) {
+          setSelection(null);
+          return;
+        }
+        setSelection(index);
         const seat = els.grid.querySelector(`[data-index="${index}"]`);
         seat?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       });
@@ -434,30 +499,53 @@
     updateHistoryButtons();
   }
 
+  function setSelection(nextIndex) {
+    ui.selected = nextIndex;
+    renderGrid();
+    renderRoster();
+    renderSelection();
+  }
+
   function handleSeatSelection(index) {
     if (ui.selected === null) {
-      ui.selected = index;
-      renderGrid();
-      renderSelection();
+      setSelection(index);
       return;
     }
     if (ui.selected === index) {
-      ui.selected = null;
-      renderGrid();
-      renderSelection();
+      setSelection(null);
       return;
     }
     const from = ui.selected;
-    transact('Đã chuyển chỗ ngồi.', () => {
+    if (!cleanName(data.seats[from]) && !cleanName(data.seats[index])) {
+      setSelection(null);
+      return;
+    }
+    const swapped = transact('Đã chuyển chỗ ngồi.', () => {
       [data.seats[from], data.seats[index]] = [data.seats[index], data.seats[from]];
     });
+    if (!swapped) setSelection(null);
+  }
+
+  function rememberFocus() {
+    lastFocusBeforeModal = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeThemeMenu();
+  }
+
+  function restoreFocus() {
+    const target = lastFocusBeforeModal;
+    lastFocusBeforeModal = null;
+    if (target && document.contains(target)) {
+      try { target.focus({ preventScroll: true }); } catch (error) { /* bỏ qua */ }
+    }
   }
 
   function openEdit(index) {
     if (index === null || isAisle(index)) return;
+    rememberFocus();
     editingIndex = index;
     ui.selected = null;
     renderGrid();
+    renderRoster();
     renderSelection();
     els.editPosition.textContent = `CHỖ ${displaySeatNumber(index)} · ${getPosition(index)}`;
     els.editName.value = data.seats[index] || '';
@@ -466,17 +554,19 @@
     setTimeout(() => { els.editName.focus(); els.editName.select(); }, 40);
   }
 
-  function closeEdit() {
+  function closeEdit(restore = true) {
     els.editModal.hidden = true;
     editingIndex = null;
+    if (restore) restoreFocus();
   }
 
   function saveEdit() {
     if (editingIndex === null) return;
     const index = editingIndex;
     const value = cleanName(els.editName.value);
-    closeEdit();
+    closeEdit(false);
     transact(value ? 'Đã cập nhật chỗ ngồi.' : 'Đã để trống chỗ ngồi.', () => { data.seats[index] = value; });
+    restoreFocus();
   }
 
   function addStudent() {
@@ -507,6 +597,14 @@
     const rows = clamp(Number.parseInt(els.rowsInput.value, 10) || data.rows, 1, 20);
     const cols = clamp(Number.parseInt(els.colsInput.value, 10) || data.cols, 1, 20);
     const aisleCols = parseAisles(els.aisleInput.value, cols);
+    if (aisleCols.length >= cols) {
+      showToast('Cần để lại ít nhất 1 cột bàn học (không thể đặt tất cả cột làm lối đi).');
+      return;
+    }
+    els.rowsInput.value = rows;
+    els.colsInput.value = cols;
+    els.aisleInput.value = aisleCols.map((column) => column + 1).join(', ');
+
     const oldStudents = studentIndexes().map((index) => data.seats[index]);
     const capacity = rows * (cols - aisleCols.length);
     const lost = Math.max(0, oldStudents.length - capacity);
@@ -526,6 +624,10 @@
   }
 
   function clearAll() {
+    if (!studentIndexes().length) {
+      showToast('Sơ đồ hiện chưa có tên học sinh nào.');
+      return;
+    }
     askConfirm('Xóa toàn bộ tên?', 'Tất cả tên học sinh sẽ được xóa, nhưng bố cục bàn ghế vẫn được giữ lại. Bạn có thể hoàn tác thao tác này.', 'Xóa toàn bộ').then((accepted) => {
       if (!accepted) return;
       transact('Đã xóa tất cả tên học sinh.', () => {
@@ -535,6 +637,12 @@
   }
 
   function askConfirm(title, message, acceptText = 'Xác nhận') {
+    if (confirmResolver) {
+      const prev = confirmResolver;
+      confirmResolver = null;
+      prev(false);
+    }
+    rememberFocus();
     els.confirmTitle.textContent = title;
     els.confirmMessage.textContent = message;
     els.confirmAcceptBtn.textContent = acceptText;
@@ -548,16 +656,19 @@
     els.confirmModal.hidden = true;
     const resolver = confirmResolver;
     confirmResolver = null;
+    restoreFocus();
     resolver?.(value);
   }
 
   function showLoadError() {
+    rememberFocus();
     els.loadErrorModal.hidden = false;
     setTimeout(() => els.createNewFromErrorBtn.focus(), 20);
   }
 
   function closeLoadError() {
     els.loadErrorModal.hidden = true;
+    restoreFocus();
   }
 
   function createNewFromMissingFile() {
@@ -591,7 +702,7 @@
   function exportJSON() {
     const output = { ...clone(data), format: 'classroom-layout', exportedAt: new Date().toISOString() };
     downloadBlob(new Blob([JSON.stringify(output, null, 2)], { type: 'application/json;charset=utf-8' }), filename('json'));
-    showToast('Đã xuất JSON. Hãy cập nhật file lastest.json lên dự án.');
+    showToast(`Đã xuất JSON. Hãy cập nhật file ${activeSeedFile} lên dự án.`);
   }
 
   function csvValue(value) {
@@ -600,9 +711,9 @@
   }
 
   function exportCSV() {
-    const rows = [['So cho', 'Hang', 'Cot', 'Vi tri', 'Hoc sinh']];
-    usableIndexes().forEach((index) => rows.push([
-      index + 1, Math.floor(index / data.cols) + 1, (index % data.cols) + 1, getPosition(index), data.seats[index] || ''
+    const rows = [['Số chỗ', 'Hàng', 'Cột', 'Vị trí', 'Học sinh']];
+    usableIndexes().forEach((index, usablePos) => rows.push([
+      usablePos + 1, Math.floor(index / data.cols) + 1, (index % data.cols) + 1, getPosition(index), data.seats[index] || ''
     ]));
     const content = `\uFEFF${rows.map((row) => row.map(csvValue).join(',')).join('\n')}`;
     downloadBlob(new Blob([content], { type: 'text/csv;charset=utf-8' }), filename('csv'));
@@ -631,12 +742,31 @@
   function waitForScript(src, test) {
     if (test()) return Promise.resolve();
     return new Promise((resolve, reject) => {
-      const oldScript = [...document.scripts].find((script) => script.src === src);
-      const script = oldScript || Object.assign(document.createElement('script'), { src, async: true });
-      const timeout = setTimeout(() => reject(new Error('timeout')), 9000);
-      script.addEventListener('load', () => { clearTimeout(timeout); resolve(); }, { once: true });
-      script.addEventListener('error', () => { clearTimeout(timeout); reject(new Error('network')); }, { once: true });
-      if (!oldScript) document.head.appendChild(script);
+      const existing = [...document.scripts].find((item) => item.src === src);
+      let script = existing;
+      if (existing && !existing.dataset.loading) {
+        existing.remove();
+        script = null;
+      }
+      if (!script) {
+        script = Object.assign(document.createElement('script'), { src, async: true });
+        script.dataset.loading = '1';
+      }
+      const timeout = setTimeout(() => {
+        delete script.dataset.loading;
+        reject(new Error('timeout'));
+      }, 9000);
+      script.addEventListener('load', () => {
+        clearTimeout(timeout);
+        delete script.dataset.loading;
+        resolve();
+      }, { once: true });
+      script.addEventListener('error', () => {
+        clearTimeout(timeout);
+        delete script.dataset.loading;
+        reject(new Error('network'));
+      }, { once: true });
+      if (!script.isConnected) document.head.appendChild(script);
     });
   }
 
@@ -656,7 +786,7 @@
     const { min: seatMin, height: seatHeight, font: seatFont } = EXPORT_SEAT;
     const frame = document.createElement('div');
     frame.className = 'export-frame';
-    frame.style.width = `${Math.max(1000, data.cols * seatMin + 64)}px`;
+    frame.style.width = `${Math.max(1000, data.cols * seatMin + Math.max(0, data.cols - 1) + 64)}px`;
     frame.style.setProperty('--seat-size', `${seatMin}px`);
     frame.style.setProperty('--seat-height', `${seatHeight}px`);
     frame.style.setProperty('--seat-font', `${seatFont}px`);
@@ -664,6 +794,7 @@
     const clone = els.diagramPrint.cloneNode(true);
     clone.removeAttribute('id');
     clone.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
+    clone.querySelectorAll('[hidden]').forEach((element) => element.remove());
     clone.querySelectorAll('.seat-edit').forEach((element) => element.remove());
     if (!exportOptions.seatNumbers) clone.querySelectorAll('.seat-number').forEach((element) => element.remove());
     clone.querySelectorAll('.seat').forEach((seat) => seat.classList.remove('selected', 'over', 'dragging'));
@@ -675,8 +806,7 @@
       grid.style.width = '100%';
     }
     setAisleLabels(clone, exportOptions.aisleLabel);
-    setFrontLabel(clone.querySelector('.teacher-desk'), exportOptions.teacherLabel);
-    setFrontLabel(clone.querySelector('.door'), exportOptions.doorLabel);
+    applyFrontSection(clone, exportOptions.teacherLabel, exportOptions.doorLabel);
     if (!exportOptions.showFooter) clone.querySelector('.diagram-footer')?.remove();
 
     frame.appendChild(clone);
@@ -701,18 +831,34 @@
   }
 
   async function exportPNG() {
+    if (isExporting) return;
+    isExporting = true;
+    showToast('Đang tạo ảnh PNG…');
     try {
       const canvas = await createCanvas();
-      canvas.toBlob((blob) => {
-        if (blob) downloadBlob(blob, filename('png'));
-        showToast('Đã xuất ảnh PNG chất lượng cao.');
-      }, 'image/png');
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (blob) {
+        downloadBlob(blob, filename('png'));
+      } else {
+        const anchor = document.createElement('a');
+        anchor.href = canvas.toDataURL('image/png');
+        anchor.download = filename('png');
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      }
+      showToast('Đã xuất ảnh PNG chất lượng cao.');
     } catch (error) {
       showToast('Không thể xuất ảnh. Hãy kiểm tra kết nối Internet rồi thử lại.');
+    } finally {
+      isExporting = false;
     }
   }
 
   async function exportPDF() {
+    if (isExporting) return;
+    isExporting = true;
+    showToast('Đang tạo file PDF…');
     try {
       await ensureExportLibraries(true);
       const canvas = await createCanvas();
@@ -727,6 +873,8 @@
       showToast('Đã xuất PDF khổ A4 ngang.');
     } catch (error) {
       showToast('Không thể xuất PDF. Hãy kiểm tra kết nối Internet rồi thử lại.');
+    } finally {
+      isExporting = false;
     }
   }
 
@@ -738,7 +886,8 @@
 
   function requestExport(kind) {
     const config = exportKinds[kind];
-    if (!config) return;
+    if (!config || isExporting) return;
+    rememberFocus();
     els.exportKindText.textContent = config.kicker;
     els.exportAcceptBtn.textContent = config.accept;
     els.optSeatNumbers.checked = Boolean(exportOptions.seatNumbers);
@@ -751,9 +900,10 @@
     setTimeout(() => els.optAisleLabel.focus(), 20);
   }
 
-  function closeExportModal() {
+  function closeExportModal(restore = true) {
     els.exportModal.hidden = true;
     pendingExport = null;
+    if (restore) restoreFocus();
   }
 
   function submitExportOptions() {
@@ -767,7 +917,7 @@
     saveExportOptions();
     applyLiveOptions();
     const kind = pendingExport;
-    closeExportModal();
+    closeExportModal(true);
     if (kind && exportKinds[kind]) exportKinds[kind].run();
   }
 
@@ -775,7 +925,6 @@
   function printDiagram() {
     els.diagramPrint.classList.toggle('show-numbers', Boolean(exportOptions.seatNumbers));
     window.print();
-    els.diagramPrint.classList.remove('show-numbers');
   }
 
   // Thử lần lượt các tên file dữ liệu để tương thích dù file được đặt tên
@@ -787,7 +936,11 @@
         const response = await fetch(file, { cache: 'no-store' });
         if (!response.ok) continue;
         const parsed = await response.json();
-        if (parsed && Array.isArray(parsed.seats)) { payload = parsed; break; }
+        if (parsed && Array.isArray(parsed.seats)) {
+          payload = parsed;
+          activeSeedFile = file.replace(/^\.\//, '');
+          break;
+        }
       } catch (error) { /* thử tên tiếp theo */ }
     }
     if (!payload) throw new Error('Seed not found');
@@ -795,7 +948,7 @@
   }
 
   async function reloadSeed(ask = true) {
-    if (ask && !(await askConfirm('Khôi phục bản mẫu?', 'Sơ đồ hiện tại sẽ được thay bằng dữ liệu trong file lastest.json. Bản hiện tại vẫn có thể hoàn tác trong phiên này.', 'Tải bản mẫu'))) return;
+    if (ask && !(await askConfirm('Khôi phục bản mẫu?', `Sơ đồ hiện tại sẽ được thay bằng dữ liệu trong file ${activeSeedFile}. Bản hiện tại vẫn có thể hoàn tác trong phiên này.`, 'Tải bản mẫu'))) return;
     try {
       const seed = await fetchSeed();
       pushHistory();
@@ -804,7 +957,7 @@
       ui.selected = null;
       render();
       saveLocal();
-      showToast('Đã tải dữ liệu từ lastest.json.');
+      showToast(`Đã tải dữ liệu từ ${activeSeedFile}.`);
     } catch (error) {
       showLoadError();
     }
@@ -812,10 +965,17 @@
 
   function toggleFullscreen() {
     const full = els.workspace.classList.toggle('fullscreen-board');
-    const button = $('#fullscreenBtn');
-    button.title = full ? 'Thoát toàn màn hình' : 'Toàn màn hình';
-    button.setAttribute('aria-label', button.title);
-    if (full) els.workspace.scrollIntoView({ block: 'start' });
+    document.body.style.overflow = full ? 'hidden' : '';
+    els.fullscreenBtn.title = full ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình';
+    els.fullscreenBtn.setAttribute('aria-label', els.fullscreenBtn.title);
+    els.fullscreenBtn.setAttribute('aria-pressed', String(full));
+    if (els.fullscreenIcon) {
+      els.fullscreenIcon.innerHTML = full
+        ? '<path d="M8 3v5H3M16 3v5h5M21 16h-5v5M3 16h5v5"/>'
+        : '<path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/>';
+    }
+    applyZoomStyles();
+    if (full) els.workspace.scrollTop = 0;
   }
 
   function bindEvents() {
@@ -838,10 +998,10 @@
     els.createNewFromErrorBtn.addEventListener('click', createNewFromMissingFile);
     els.loadErrorModal.addEventListener('click', (event) => { if (event.target === els.loadErrorModal) closeLoadError(); });
 
-    els.closeExportBtn.addEventListener('click', closeExportModal);
-    els.cancelExportBtn.addEventListener('click', closeExportModal);
+    els.closeExportBtn.addEventListener('click', () => closeExportModal(true));
+    els.cancelExportBtn.addEventListener('click', () => closeExportModal(true));
     els.exportForm.addEventListener('submit', (event) => { event.preventDefault(); submitExportOptions(); });
-    els.exportModal.addEventListener('click', (event) => { if (event.target === els.exportModal) closeExportModal(); });
+    els.exportModal.addEventListener('click', (event) => { if (event.target === els.exportModal) closeExportModal(true); });
 
     $('#addStudentTopBtn').addEventListener('click', addStudent);
     $('#addStudentRosterBtn').addEventListener('click', addStudent);
@@ -856,24 +1016,39 @@
     $('#exportPngBtn').addEventListener('click', () => requestExport('png'));
     $('#exportPdfBtn').addEventListener('click', () => requestExport('pdf'));
     $('#printBtn').addEventListener('click', printDiagram);
+    window.addEventListener('beforeprint', () => {
+      els.diagramPrint.classList.toggle('show-numbers', Boolean(exportOptions.seatNumbers));
+    });
+    window.addEventListener('afterprint', () => {
+      els.diagramPrint.classList.remove('show-numbers');
+    });
     els.jsonFile.addEventListener('change', (event) => importFile(event.target.files[0]));
     els.undoBtn.addEventListener('click', undo);
     els.redoBtn.addEventListener('click', redo);
-    $('#fullscreenBtn').addEventListener('click', toggleFullscreen);
-    $('#cancelSelectionBtn').addEventListener('click', () => { ui.selected = null; renderGrid(); renderSelection(); });
+    els.fullscreenBtn.addEventListener('click', toggleFullscreen);
+    $('#cancelSelectionBtn').addEventListener('click', () => setSelection(null));
 
     els.className.addEventListener('focus', () => { titleBeforeEdit = data.title; });
+    els.className.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); els.className.blur(); }
+    });
     els.className.addEventListener('input', () => {
-      data.title = safeTitle(els.className.value);
-      els.workspaceTitle.textContent = `Lớp ${data.title}`;
-      els.diagramTitle.textContent = `SƠ ĐỒ LỚP ${data.title}`;
-      document.title = `Sơ đồ lớp · ${data.title}`;
+      const raw = cleanName(els.className.value).slice(0, 50);
+      const preview = raw || titleBeforeEdit || 'Lớp mới';
+      els.workspaceTitle.textContent = formatWorkspaceTitle(preview);
+      els.diagramTitle.textContent = formatDiagramTitle(preview);
+      document.title = `Sơ đồ lớp · ${preview}`;
     });
     els.className.addEventListener('change', () => {
+      data.title = safeTitle(els.className.value);
+      els.workspaceTitle.textContent = formatWorkspaceTitle(data.title);
+      els.diagramTitle.textContent = formatDiagramTitle(data.title);
+      document.title = `Sơ đồ lớp · ${data.title}`;
       if (data.title !== titleBeforeEdit) {
         undoStack.push(JSON.stringify({ ...data, title: titleBeforeEdit }));
         if (undoStack.length > MAX_HISTORY) undoStack.shift();
         redoStack = [];
+        titleBeforeEdit = data.title;
         updateHistoryButtons();
         saveLocal();
         showToast('Đã đổi tên lớp.');
@@ -892,14 +1067,14 @@
     window.addEventListener('resize', applyZoomStyles, { passive: true });
 
     els.editForm.addEventListener('submit', (event) => { event.preventDefault(); saveEdit(); });
-    $('#closeEditBtn').addEventListener('click', closeEdit);
-    $('#cancelEditBtn').addEventListener('click', closeEdit);
+    $('#closeEditBtn').addEventListener('click', () => closeEdit(true));
+    $('#cancelEditBtn').addEventListener('click', () => closeEdit(true));
     els.deleteSeatBtn.addEventListener('click', () => {
       if (editingIndex === null) return;
       els.editName.value = '';
       saveEdit();
     });
-    els.editModal.addEventListener('click', (event) => { if (event.target === els.editModal) closeEdit(); });
+    els.editModal.addEventListener('click', (event) => { if (event.target === els.editModal) closeEdit(true); });
 
     els.confirmAcceptBtn.addEventListener('click', () => settleConfirm(true));
     els.confirmCancelBtn.addEventListener('click', () => settleConfirm(false));
@@ -912,16 +1087,24 @@
 
     window.addEventListener('keydown', (event) => {
       const meta = event.ctrlKey || event.metaKey;
-      if (meta && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); }
-      if (meta && event.key.toLowerCase() === 'y') { event.preventDefault(); redo(); }
+      const isEditable = event.target instanceof Element && Boolean(event.target.closest('input, textarea, select, [contenteditable="true"]'));
+      const anyModalOpen = !els.editModal.hidden || !els.exportModal.hidden || !els.confirmModal.hidden || !els.loadErrorModal.hidden;
+      if (!isEditable && !anyModalOpen && meta && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        event.shiftKey ? redo() : undo();
+      }
+      if (!isEditable && !anyModalOpen && meta && event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        redo();
+      }
       if (event.key === 'Escape') {
-        if (!els.editModal.hidden) closeEdit();
-        else if (!els.exportModal.hidden) closeExportModal();
+        if (!els.editModal.hidden) closeEdit(true);
+        else if (!els.exportModal.hidden) closeExportModal(true);
         else if (!els.confirmModal.hidden) settleConfirm(false);
         else if (!els.loadErrorModal.hidden) closeLoadError();
         else if (!els.themeMenu.hidden) closeThemeMenu();
         else if (els.workspace.classList.contains('fullscreen-board')) toggleFullscreen();
-        else if (ui.selected !== null) { ui.selected = null; renderGrid(); renderSelection(); }
+        else if (ui.selected !== null) setSelection(null);
       }
     });
   }
@@ -930,25 +1113,25 @@
     bindEvents();
     const local = readLocal();
     let initialLoadFailed = false;
-    if (local?.ui?.theme === 'dark') ui.theme = 'dark';
+    if (local?.ui) {
+      ui.zoom = clamp(Number(local.ui.zoom) || 92, 64, 132);
+      ui.theme = local.ui.theme === 'dark' ? 'dark' : 'light';
+    }
     try {
       const seed = await fetchSeed();
       const remoteFingerprint = fingerprint(seed);
       if (local && (!local.sourceFingerprint || local.sourceFingerprint === remoteFingerprint)) {
         data = normaliseData(local.data);
-        ui.zoom = clamp(Number(local.ui?.zoom) || 92, 64, 132);
-        ui.theme = local.ui?.theme === 'dark' ? 'dark' : 'light';
         sourceFingerprint = local.sourceFingerprint || null;
       } else {
         data = seed;
         sourceFingerprint = remoteFingerprint;
+        saveLocal();
       }
     } catch (error) {
       initialLoadFailed = true;
       if (local) {
         data = normaliseData(local.data);
-        ui.zoom = clamp(Number(local.ui?.zoom) || 92, 64, 132);
-        ui.theme = local.ui?.theme === 'dark' ? 'dark' : 'light';
         sourceFingerprint = local.sourceFingerprint || null;
       } else {
         data = normaliseData(createEmptyLayout());

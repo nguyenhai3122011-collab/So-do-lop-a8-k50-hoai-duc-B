@@ -24,27 +24,27 @@
         </a>
 
         <div class="header-actions">
-          <button class="button button-ghost icon-button" id="undoBtn" title="Hoàn tác (Ctrl/Cmd + Z)" aria-label="Hoàn tác" disabled>
+          <button type="button" class="button button-ghost icon-button" id="undoBtn" title="Hoàn tác (Ctrl/Cmd + Z)" aria-label="Hoàn tác" disabled>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M20 20v-3a8 8 0 0 0-8-8H4"/></svg>
           </button>
-          <button class="button button-ghost icon-button" id="redoBtn" title="Làm lại (Ctrl/Cmd + Y)" aria-label="Làm lại" disabled>
+          <button type="button" class="button button-ghost icon-button" id="redoBtn" title="Làm lại (Ctrl/Cmd + Y)" aria-label="Làm lại" disabled>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M4 20v-3a8 8 0 0 1 8-8h8"/></svg>
           </button>
           <div class="theme-picker">
-            <button class="button button-ghost icon-button" id="themeToggle" title="Chọn giao diện" aria-label="Chọn giao diện" aria-haspopup="menu" aria-expanded="false">
+            <button type="button" class="button button-ghost icon-button" id="themeToggle" title="Chọn giao diện" aria-label="Chọn giao diện" aria-haspopup="menu" aria-expanded="false">
               <svg id="themeToggleIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.7 6.7 0 0 0 21 12.8Z"/></svg>
             </button>
             <div class="theme-menu" id="themeMenu" role="menu" hidden>
               <p>GIAO DIỆN</p>
-              <button type="button" data-theme-choice="light" role="menuitem"><span class="theme-choice-icon">☀</span>Sáng<span class="theme-check">✓</span></button>
-              <button type="button" data-theme-choice="dark" role="menuitem"><span class="theme-choice-icon">☾</span>Tối<span class="theme-check">✓</span></button>
+              <button type="button" data-theme-choice="light" role="menuitemradio" aria-checked="true"><span class="theme-choice-icon">☀</span>Sáng<span class="theme-check">✓</span></button>
+              <button type="button" data-theme-choice="dark" role="menuitemradio" aria-checked="false"><span class="theme-choice-icon">☾</span>Tối<span class="theme-check">✓</span></button>
             </div>
           </div>
-          <button class="button button-ghost desktop-only" id="loadSeedBtn" title="Đọc lại dữ liệu từ lastest.json">
+          <button type="button" class="button button-ghost desktop-only" id="loadSeedBtn" title="Đọc lại dữ liệu từ latest.json">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
             Tải lại mẫu
           </button>
-          <button class="button button-primary" id="addStudentTopBtn">
+          <button type="button" class="button button-primary" id="addStudentTopBtn">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             <span>Thêm học sinh</span>
           </button>
@@ -59,11 +59,11 @@
           <div class="class-name-row">
             <label class="sr-only" for="className">Tên lớp</label>
             <input id="className" class="class-name-input" type="text" value="10A8" maxlength="50" />
-            <button class="mini-edit" id="editClassBtn" aria-label="Sửa tên lớp" title="Sửa tên lớp">
+            <button type="button" class="mini-edit" id="editClassBtn" aria-label="Sửa tên lớp" title="Sửa tên lớp">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
             </button>
           </div>
-          <p id="layoutDescription" class="class-description">6 hàng · 8 bàn · 1 lối đi</p>
+          <p id="layoutDescription" class="class-description">6 hàng · 8 dãy bàn · 1 lối đi</p>
           <div class="stat-grid">
             <div class="stat-box"><strong id="studentCount">0</strong><span>Học sinh</span></div>
             <div class="stat-box"><strong id="emptyCount">0</strong><span>Chỗ trống</span></div>
@@ -84,24 +84,24 @@
           <label class="field-label full-field">Cột lối đi <span class="field-help">(ví dụ: 5 hoặc 4, 8)</span>
             <input id="aisleInput" type="text" value="5" placeholder="Không có lối đi" />
           </label>
-          <button class="button button-secondary button-wide" id="applyLayoutBtn">Áp dụng bố cục</button>
+          <button type="button" class="button button-secondary button-wide" id="applyLayoutBtn">Áp dụng bố cục</button>
           <p class="helper-text">Khi màn hình hẹp, sơ đồ vẫn giữ cỡ chữ dễ đọc và có thể cuộn ngang.</p>
         </section>
 
         <section class="side-card quick-card">
           <div class="section-heading"><h2>Thao tác nhanh</h2></div>
           <div class="quick-actions">
-            <button class="quick-action" id="shuffleBtn">
+            <button type="button" class="quick-action" id="shuffleBtn">
               <span class="action-icon indigo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M4 7h3c4 0 5 10 9 10h4"/><path d="m16 13 4 4-4 4"/><path d="M4 17h3c1.35 0 2.35-1.14 3.18-2.65"/></svg></span>
               <span><b>Xáo trộn chỗ ngồi</b><small>Giữ nguyên số chỗ trống</small></span>
             </button>
-            <button class="quick-action" id="clearBtn">
+            <button type="button" class="quick-action" id="clearBtn">
               <span class="action-icon red"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v4M14 11v4"/></svg></span>
               <span><b>Xóa toàn bộ tên</b><small>Không xóa cấu trúc bàn ghế</small></span>
             </button>
-            <button class="quick-action" id="resetBtn">
+            <button type="button" class="quick-action" id="resetBtn">
               <span class="action-icon amber"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span>
-              <span><b>Khôi phục bản mẫu</b><small>Đọc lại <code>lastest.json</code></small></span>
+              <span><b>Khôi phục bản mẫu</b><small>Đọc lại <code>latest.json</code></small></span>
             </button>
           </div>
         </section>
@@ -109,12 +109,12 @@
         <section class="side-card data-card">
           <div class="section-heading"><h2>Dữ liệu &amp; in ấn</h2></div>
           <div class="data-actions">
-            <button class="button button-secondary" id="importBtn">Tải JSON</button>
-            <button class="button button-secondary" id="exportJsonBtn">Xuất JSON</button>
-            <button class="button button-secondary" id="exportCsvBtn">Xuất CSV</button>
-            <button class="button button-secondary" id="exportPngBtn">Ảnh PNG</button>
-            <button class="button button-secondary" id="exportPdfBtn">PDF A4</button>
-            <button class="button button-dark" id="printBtn">In sơ đồ</button>
+            <button type="button" class="button button-secondary" id="importBtn">Tải JSON</button>
+            <button type="button" class="button button-secondary" id="exportJsonBtn">Xuất JSON</button>
+            <button type="button" class="button button-secondary" id="exportCsvBtn">Xuất CSV</button>
+            <button type="button" class="button button-secondary" id="exportPngBtn">Ảnh PNG</button>
+            <button type="button" class="button button-secondary" id="exportPdfBtn">PDF A4</button>
+            <button type="button" class="button button-dark" id="printBtn">In sơ đồ</button>
           </div>
           <input id="jsonFile" type="file" accept="application/json,.json" hidden />
         </section>
@@ -132,8 +132,8 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2M11 8v6M8 11h6"/></svg>
               <input id="zoomRange" type="range" min="64" max="132" value="92" aria-label="Kích thước bàn ghế" />
             </label>
-            <button class="button button-ghost icon-button" id="fullscreenBtn" title="Toàn màn hình" aria-label="Toàn màn hình">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/></svg>
+            <button type="button" class="button button-ghost icon-button" id="fullscreenBtn" title="Toàn màn hình" aria-label="Toàn màn hình" aria-pressed="false">
+              <svg id="fullscreenIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/></svg>
             </button>
           </div>
         </div>
@@ -142,13 +142,13 @@
         <div class="board-card">
           <div class="selection-bar" id="selectionBar" hidden>
             <span id="selectionText">Đã chọn một chỗ</span>
-            <button id="cancelSelectionBtn" aria-label="Bỏ chọn">Bỏ chọn ×</button>
+            <button type="button" id="cancelSelectionBtn" aria-label="Bỏ chọn">Bỏ chọn ×</button>
           </div>
           <div id="diagramPrint" class="diagram-print">
             <div class="diagram-heading">
               <div class="school-line">NĂM HỌC <span id="schoolYear">2026 — 2027</span></div>
               <h2 id="diagramTitle">SƠ ĐỒ LỚP 10A8</h2>
-              <div class="diagram-meta"><span id="diagramStudents">0 học sinh</span><i></i><span id="diagramDate">Cập nhật hôm nay</span></div>
+              <div class="diagram-meta"><span id="diagramStudents">0 học sinh</span><i id="diagramMetaSep" aria-hidden="true" hidden></i><span id="diagramDate" hidden></span></div>
             </div>
 
             <div class="front-of-room">
@@ -157,7 +157,7 @@
             </div>
 
             <div class="grid-frame">
-              <div class="grid-ruler"><span>Bàn Giáo viên</span><span>Cửa ra vào</span></div>
+              <div class="grid-ruler"><span data-ruler-teacher>Bàn giáo viên</span><span data-ruler-door>Cửa ra vào</span></div>
               <div class="grid-viewport" id="gridViewport">
                 <div id="seatGrid" class="seat-grid" aria-label="Danh sách chỗ ngồi"></div>
               </div>
@@ -182,11 +182,11 @@
           <label class="search-box">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/></svg>
             <input id="searchInput" type="search" placeholder="Tìm học sinh…" autocomplete="off" />
-            <button id="clearSearchBtn" aria-label="Xóa tìm kiếm" hidden>×</button>
+            <button type="button" id="clearSearchBtn" aria-label="Xóa tìm kiếm" hidden>×</button>
           </label>
           <div id="rosterList" class="roster-list" aria-live="polite"></div>
           <p id="rosterEmpty" class="roster-empty" hidden>Không tìm thấy học sinh phù hợp.</p>
-          <button class="button button-primary button-wide roster-add" id="addStudentRosterBtn">
+          <button type="button" class="button button-primary button-wide roster-add" id="addStudentRosterBtn">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Thêm học sinh
           </button>
         </section>
@@ -194,10 +194,10 @@
     </main>
 
     <nav class="mobile-nav" aria-label="Thao tác nhanh trên điện thoại">
-      <button id="mobileAddBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Thêm</span></button>
-      <button id="mobileShuffleBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M4 7h3c4 0 5 10 9 10h4"/></svg><span>Xáo trộn</span></button>
-      <button id="mobileExportBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg><span>Xuất</span></button>
-      <button id="mobileMoreBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>Thêm</span></button>
+      <button type="button" id="mobileAddBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Thêm</span></button>
+      <button type="button" id="mobileShuffleBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M4 7h3c4 0 5 10 9 10h4"/><path d="m16 13 4 4-4 4"/><path d="M4 17h3c1.35 0 2.35-1.14 3.18-2.65"/></svg><span>Xáo trộn</span></button>
+      <button type="button" id="mobileExportBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg><span>Xuất</span></button>
+      <button type="button" id="mobileMoreBtn" aria-label="Tùy chọn khác"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>Tùy chọn</span></button>
     </nav>
 
     <div id="editModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" hidden>
@@ -225,8 +225,8 @@
         <h2 id="confirmTitle">Bạn có chắc không?</h2>
         <p id="confirmMessage" class="modal-description"></p>
         <div class="modal-actions">
-          <button id="confirmCancelBtn" class="button button-secondary">Hủy</button>
-          <button id="confirmAcceptBtn" class="button button-danger">Xác nhận</button>
+          <button type="button" id="confirmCancelBtn" class="button button-secondary">Hủy</button>
+          <button type="button" id="confirmAcceptBtn" class="button button-danger">Xác nhận</button>
         </div>
       </div>
     </div>
@@ -238,8 +238,8 @@
         <h2 id="loadErrorTitle">Không tải được sơ đồ</h2>
         <p class="modal-description">Không tải được sơ đồ, vui lòng tạo sơ đồ mới.</p>
         <div class="modal-actions">
-          <button id="closeLoadErrorBtn" class="button button-secondary">Đóng</button>
-          <button id="createNewFromErrorBtn" class="button button-primary">Tạo sơ đồ mới</button>
+          <button type="button" id="closeLoadErrorBtn" class="button button-secondary">Đóng</button>
+          <button type="button" id="createNewFromErrorBtn" class="button button-primary">Tạo sơ đồ mới</button>
         </div>
       </div>
     </div>

@@ -35,7 +35,7 @@ Sau đó truy cập: `http://localhost:8000`
 
 ## Cập nhật dữ liệu lớp
 
-Mở file [`lastest.json`](./lastest.json) và chỉnh các trường sau:
+Mở file [`latest.json`](./latest.json) và chỉnh các trường sau:
 
 ```json
 {
@@ -50,7 +50,7 @@ Mở file [`lastest.json`](./lastest.json) và chỉnh các trường sau:
 - `aisleCols` đếm từ **0**: `[4]` nghĩa là cột thứ 5 là lối đi.
 - `seats` được ghi theo thứ tự từ trái sang phải, từ trên xuống dưới; số phần tử nên bằng `rows × cols`.
 - Ô thuộc lối đi luôn được để trống.
-- Có thể dùng nút **Xuất JSON** sau khi chỉnh trên giao diện, sau đó đổi tên file tải về thành `lastest.json` để dùng làm bản mẫu mới.
+- Có thể dùng nút **Xuất JSON** sau khi chỉnh trên giao diện, sau đó đổi tên file tải về thành `latest.json` để dùng làm bản mẫu mới.
 
 > Lưu ý: ứng dụng thử lần lượt `latest.json` rồi `lastest.json`, nên đặt tên file nào trong hai cái cũng được. Nếu đổi thành tên khác thì phải sửa lại đường dẫn trong `app.js`.
 
@@ -60,9 +60,8 @@ Mở file [`lastest.json`](./lastest.json) và chỉnh các trường sau:
 ├── index.html       # Giao diện ứng dụng
 ├── styles.css       # Thiết kế responsive + chế độ in
 ├── app.js           # Logic quản lý sơ đồ
-├── lastest.json     # Sơ đồ được nạp mặc định
-├── .nojekyll        # Tối ưu triển khai GitHub Pages
-└── .gitignore
+├── latest.json      # Sơ đồ được nạp mặc định
+└── README.md        # Hướng dẫn sử dụng & triển khai
 ```
 
 ## Ghi chú về xuất ảnh/PDF
